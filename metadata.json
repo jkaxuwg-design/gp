@@ -1,0 +1,5 @@
+{
+  "name": "GhostPress",
+  "description": "A privacy-first, offline industrial compression workbench for images and videos using WebAssembly.",
+  "requestFramePermissions": []
+}

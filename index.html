@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GhostPress | Industrial Compression</title>
+    
+    <!-- Security Headers for WASM (Best Effort via Meta) -->
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              industrial: {
+                50: '#f5f7fa',
+                100: '#e4e7eb',
+                200: '#cbd2d9',
+                300: '#9aa5b1',
+                400: '#7b8794',
+                500: '#616e7c',
+                600: '#52606d',
+                700: '#3e4c59',
+                800: '#323f4b',
+                900: '#1f2933',
+                950: '#11171d',
+              },
+              neon: {
+                green: '#00ff9d',
+                blue: '#00e1ff',
+                red: '#ff0055',
+              }
+            },
+            animation: {
+              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'press-down': 'pressDown 2s ease-in-out infinite alternate',
+            },
+            keyframes: {
+              pressDown: {
+                '0%': { transform: 'translateY(0)' },
+                '100%': { transform: 'translateY(20px)' },
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1f2933;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #52606d;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #616e7c;
+      }
+      body {
+        background-color: #11171d;
+        color: #e4e7eb;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "@ffmpeg/util": "https://aistudiocdn.com/@ffmpeg/util@^0.12.2",
+    "@ffmpeg/ffmpeg": "https://aistudiocdn.com/@ffmpeg/ffmpeg@^0.12.15"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
