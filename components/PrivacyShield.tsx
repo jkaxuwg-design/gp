@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import React, { useEffect, useState } from 'react';
 import { Shield, WifiOff, Globe, Lock } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';

@@ -1,134 +1,84 @@
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { toBlobURL, fetchFile } from '@ffmpeg/util';
-import { GhostFile, ProcessingState } from '../types';
+import { GhostFile } from '../types';
 
 class FFmpegService {
-  private ffmpeg: FFmpeg | null = null;
-  private isLoaded = false;
-  private loadPromise: Promise<void> | null = null;
-  private simulationMode = false;
+  private worker: Worker | null = null;
+  private callbacks = new Map<string, (data: any) => void>();
+  private isWorkerLoaded = false;
 
   constructor() {
-    this.ffmpeg = new FFmpeg();
+    // Initialize worker
+    // Note: In some bundlers, new Worker(new URL(...)) is required.
+    try {
+        this.worker = new Worker(new URL('./ffmpeg.worker.ts', import.meta.url), { type: 'module' });
+        
+        this.worker.onmessage = (e) => {
+          const { type, payload } = e.data;
+          
+          if (type === 'LOADED') {
+              this.isWorkerLoaded = true;
+              console.log('GhostPress: Worker Engine Loaded');
+          }
+          
+          if (type === 'ERROR') {
+              console.error('GhostPress Worker Error:', payload);
+          }
+
+          if (type === 'PROGRESS') {
+              const callback = this.callbacks.get(`p_${payload.id}`);
+              if (callback) callback(payload.progress);
+          }
+          
+          if (type === 'DONE') {
+              const callback = this.callbacks.get(`d_${payload.id}`);
+              if (callback) callback(payload.buffer);
+          }
+        };
+    } catch (e) {
+        console.error("Failed to initialize FFmpeg worker", e);
+    }
   }
 
   public async load(): Promise<void> {
-    if (this.isLoaded) return;
-    if (this.loadPromise) return this.loadPromise;
-
-    this.loadPromise = this._initFFmpeg();
-    return this.loadPromise;
-  }
-
-  private async _initFFmpeg() {
-    try {
-      if (!this.ffmpeg) this.ffmpeg = new FFmpeg();
-      
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-      
-      // Attempt to load WASM
-      // Note: In many sandbox environments, SharedArrayBuffer is blocked.
-      // We will catch this error and enable simulation mode.
-      await this.ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
-      
-      this.isLoaded = true;
-      console.log('GhostPress: FFmpeg WASM engine loaded.');
-    } catch (error) {
-      console.warn('GhostPress: FFmpeg load failed (likely due to missing COOP/COEP headers). Enabling Simulation Mode for UI demo.', error);
-      this.simulationMode = true;
-      this.isLoaded = true;
-    }
-  }
-
-  public async compressFile(
-    file: GhostFile, 
-    onProgress: (progress: number) => void
-  ): Promise<Blob> {
-    if (!this.isLoaded) await this.load();
-
-    if (this.simulationMode) {
-      return this._simulateCompression(file, onProgress);
-    }
-
-    if (!this.ffmpeg) throw new Error("FFmpeg not initialized");
-
-    const { name, originalFile, settings } = file;
-    const inputName = `input_${file.id}_${name}`;
-    const outputName = `output_${file.id}_${name}`; // Ideally change extension based on settings
-
-    try {
-      await this.ffmpeg.writeFile(inputName, await fetchFile(originalFile));
-
-      // Setup Progress Handler
-      this.ffmpeg.on('progress', ({ progress }) => {
-        onProgress(Math.round(progress * 100));
-      });
-
-      // Construct FFmpeg Command
-      // Simplified command logic for demo
-      const args = ['-i', inputName];
-      
-      // Video vs Image logic
-      if (file.type === 'video') {
-         // CRF 23 is default, 28 is compressed. Scale 0-51.
-         // Mapping 0-100 quality to CRF. 100 quality -> 18 crf. 0 quality -> 51 crf.
-         const crf = Math.round(51 - (settings.quality / 100) * 33); 
-         args.push('-c:v', 'libx264', '-crf', crf.toString(), '-preset', 'ultrafast');
-         if (settings.stripMetadata) {
-             args.push('-map_metadata', '-1');
-         }
-      } else {
-         // Image logic (using ffmpeg for generic scaling/compression)
-         // Quality for JPEG is 2-31 (scale q:v). 
-         args.push('-q:v', Math.round((100 - settings.quality) / 3).toString());
-      }
-      
-      args.push(outputName);
-
-      await this.ffmpeg.exec(args);
-
-      const data = await this.ffmpeg.readFile(outputName);
-      const blob = new Blob([data], { type: originalFile.type });
-      
-      // Cleanup
-      await this.ffmpeg.deleteFile(inputName);
-      await this.ffmpeg.deleteFile(outputName);
-      
-      // Remove listener to avoid leaks or cross-talk
-      this.ffmpeg.off('progress', () => {});
-
-      return blob;
-    } catch (e) {
-      console.error(e);
-      throw new Error('Compression failed');
-    }
-  }
-
-  private _simulateCompression(file: GhostFile, onProgress: (p: number) => void): Promise<Blob> {
-    return new Promise((resolve) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 5 + 1;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(interval);
-          // Return the original file as "compressed" in simulation mode
-          // In a real simulation, we might slice it to fake size reduction
-          const fakeCompressed = file.originalFile.slice(0, file.originalFile.size * 0.7);
-          onProgress(100);
-          resolve(fakeCompressed);
-        } else {
-          onProgress(Math.round(progress));
-        }
-      }, 100);
-    });
+    if (this.isWorkerLoaded) return;
+    this.worker?.postMessage({ type: 'LOAD' });
+    // We don't strictly await the load here to avoid blocking UI, 
+    // the compress function will check/wait or the worker will queue.
   }
 
   public isSimulating() {
-    return this.simulationMode;
+    return false; // Worker implementation aims for real processing
+  }
+
+  async compressFile(file: GhostFile, onProgress: (p: number) => void): Promise<Blob> {
+    if (!this.worker) throw new Error("Worker not initialized");
+    
+    return new Promise((resolve, reject) => {
+      const id = file.id;
+      
+      // Set progress callback
+      this.callbacks.set(`p_${id}`, onProgress);
+      
+      // Set completion callback
+      this.callbacks.set(`d_${id}`, (buffer: ArrayBuffer) => {
+        // Determine mime type based on file type or output format
+        // For this demo, we default video to mp4
+        const type = file.type === 'video' ? 'video/mp4' : file.originalFile.type;
+        resolve(new Blob([buffer], { type }));
+        
+        // Cleanup
+        this.callbacks.delete(`p_${id}`);
+        this.callbacks.delete(`d_${id}`);
+      });
+
+      this.worker?.postMessage({ 
+          type: 'COMPRESS', 
+          payload: { 
+              file: file.originalFile, 
+              settings: file.settings, 
+              id 
+          } 
+      });
+    });
   }
 }
 

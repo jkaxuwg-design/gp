@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import React, { useState, useRef, useEffect } from 'react';
 import { GhostFile } from '../types';
 import { Minimize2, Maximize2, X } from 'lucide-react';

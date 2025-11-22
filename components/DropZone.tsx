@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import React, { useCallback, useState } from 'react';
 import { Upload, FileUp, Zap } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -23,22 +24,61 @@ export const DropZone: React.FC<DropZoneProps> = ({ onFilesDropped, isProcessing
     setIsDragActive(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
 
     if (isProcessing) return;
 
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      onFilesDropped(files);
+    // Recursive file scanning
+    const getFilesFromEntry = async (entry: any): Promise<File[]> => {
+        if (entry.isFile) {
+            return new Promise(resolve => entry.file(resolve));
+        } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            return new Promise(resolve => {
+                reader.readEntries(async (entries: any[]) => {
+                    const files = await Promise.all(entries.map(getFilesFromEntry));
+                    resolve(files.flat());
+                });
+            });
+        }
+        return [];
+    };
+
+    const items = Array.from(e.dataTransfer.items);
+    const promises = items.map(item => {
+        const entry = (item as any).webkitGetAsEntry ? (item as any).webkitGetAsEntry() : null;
+        if (entry) {
+            return getFilesFromEntry(entry);
+        }
+        // Fallback for non-webkit browsers or non-entry items
+        const file = item.getAsFile();
+        return file ? [file] : [];
+    });
+
+    const nestedFiles = await Promise.all(promises);
+    const allFiles = nestedFiles.flat();
+
+    // Basic filtering for supported types
+    const validFiles = allFiles.filter(f => 
+        f.type.startsWith('video/') || 
+        f.type.startsWith('image/') ||
+        // Allow some containers that might not have strict mime types in all browsers
+        f.name.endsWith('.mkv') || 
+        f.name.endsWith('.mov')
+    );
+
+    if (validFiles.length > 0) {
+      onFilesDropped(validFiles);
     }
   }, [onFilesDropped, isProcessing]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      onFilesDropped(Array.from(e.target.files));
+    const target = e.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+      onFilesDropped(Array.from(target.files));
     }
   };
 

@@ -13,7 +13,10 @@
     "react-dom": "^19.2.0",
     "lucide-react": "^0.554.0",
     "@ffmpeg/util": "^0.12.2",
-    "@ffmpeg/ffmpeg": "^0.12.15"
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@vitejs/plugin-react": "^5.1.1",
+    "vite": "^7.2.4",
+    "dom": "^0.0.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

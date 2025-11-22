@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import React, { useState } from 'react';
 import { GhostFile, ProcessingState } from '../types';
 import { Button } from './ui/Button';
@@ -152,7 +153,7 @@ export const FileItem: React.FC<FileItemProps> = ({ file, onRemove, onCompress, 
                         min="1" 
                         max="100" 
                         value={file.settings.quality}
-                        onChange={(e) => onUpdateSettings(file.id, 'quality', parseInt(e.target.value))}
+                        onChange={(e) => onUpdateSettings(file.id, 'quality', parseInt((e.target as HTMLInputElement).value))}
                         className="w-full h-2 bg-industrial-800 rounded-lg appearance-none cursor-pointer accent-industrial-400"
                      />
                      <div className="flex justify-between text-xs font-mono text-industrial-500 mt-1">
@@ -181,7 +182,7 @@ export const FileItem: React.FC<FileItemProps> = ({ file, onRemove, onCompress, 
                         <label className="block text-xs font-mono text-industrial-400 mb-1">{t('label_format')}</label>
                          <select 
                             value={file.settings.format}
-                            onChange={(e) => onUpdateSettings(file.id, 'format', e.target.value)}
+                            onChange={(e) => onUpdateSettings(file.id, 'format', (e.target as HTMLSelectElement).value)}
                             className="w-full bg-industrial-950 border border-industrial-700 text-industrial-300 text-sm rounded p-2 focus:ring-1 focus:ring-industrial-500 outline-none"
                          >
                              <option value="original">{t('opt_original')}</option>
